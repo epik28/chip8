@@ -434,7 +434,7 @@ int main(int argc, char *argv[]) {
     CHIP8 chip;
     initialize(&chip);
     
-    if (!load_rom(&chip,argv)) {
+    if (!load_rom(&chip,argv[1])) {
         printf("Trying to load test rom...\n");
         if (!load_rom(&chip, "test.ch8")) {
             SDL_Quit();

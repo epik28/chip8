@@ -1,10 +1,10 @@
 CC = gcc
-CFLAGS = -Wall `sdl2-config --cflags`
+CFLAGS = -Wall `sdl2-config --cflags -O3 -march=native -flto`
 LDFLAGS = `sdl2-config --libs`
 
 SRCS = chip8s.c
 OBJS = $(SRCS:.c=.o)
-EXEC = game.exe
+EXEC = game
 
 $(EXEC): $(OBJS)
 	$(CC) -o $(EXEC) $(OBJS) $(LDFLAGS)

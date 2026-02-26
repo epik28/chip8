@@ -1,15 +1,21 @@
 #ifndef CHIP8_H
 #define CHIP8_H
 
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include <time.h>
+
 #define SCREEN_WIDTH 64
 #define SCREEN_HEIGHT 32
-#define SCALE 10
+#define SCREEN_WORDS (SCREEN_HEIGHT * SCREEN_WIDTH /64 )
 #define MEMORY_SIZE 4096
 #define STACK_SIZE 16
 #define REGISTERS_COUNT 16
 #define KEY_COUNT 16
 
 typedef struct CHIP8 {
+    uint64_t display[SCREEN_WORDS]; // Экран (32x64) 2048
     uint16_t stack[STACK_SIZE];    // Стек 32
     uint16_t PC;                   // Счётчик команд 2
     uint16_t I;                    // Регистр адреса 2
@@ -19,7 +25,6 @@ typedef struct CHIP8 {
     uint8_t DT;                    // Таймер задержки 1
     volatile uint8_t ST;                    // Звуковой таймер 1
     uint8_t keys[KEY_COUNT];       // Состояние клавиш 16
-    uint8_t display[SCREEN_HEIGHT][SCREEN_WIDTH]; // Экран (32x64) 2048
     uint8_t draw_flag;             // Флаг обновления экрана 1
 } CHIP8;
 // Шрифты CHIP-8 (0x0-0xF)
@@ -89,8 +94,6 @@ static inline void clear_screen(CHIP8 *chip) {
     memset(chip->display, 0, sizeof(chip->display));
     chip->draw_flag = 1;
 }
-
-
 
 static inline void execute(CHIP8 *chip, uint16_t opcode) {
     uint8_t x = (opcode >> 8) & 0x0F;
@@ -229,17 +232,15 @@ static inline void execute(CHIP8 *chip, uint16_t opcode) {
                 
                 for (int row = 0; row < height; row++) {
                     uint8_t sprite = chip->memory[chip->I + row];
+                    int pixel_y = (vy + row) % SCREEN_HEIGHT;
+                    uint64_t *row_b = &chip->display[pixel_y];
                     
                     for (int col = 0; col < 8; col++) {
                         if (sprite & (0x80 >> col)) {
                             int pixel_x = (vx + col) % SCREEN_WIDTH;
-                            int pixel_y = (vy + row) % SCREEN_HEIGHT;
-                            
-                            if (chip->display[pixel_y][pixel_x] == 1) {
-                                chip->V[0xF] = 1;
-                            }
-                            
-                            chip->display[pixel_y][pixel_x] ^= 1;
+                            uint64_t mask = 1ULL << pixel_x;
+                            if (*row_b & (mask) ) chip->V[0xF] = 1;
+                            *row_b ^= mask;
                         }
                     }
                 }

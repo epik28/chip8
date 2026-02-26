@@ -1,8 +1,9 @@
 CC = gcc
 CFLAGS = -Wall `sdl2-config --cflags -O3 -march=native -flto`
-LDFLAGS = `sdl2-config --libs`
+LDFLAGS = `sdl2-config --libs `
 
-SRCS = chip8s.c
+SRCS = game.c 
+EXTERNAL_SRC = sql/sqlite.c
 OBJS = $(SRCS:.c=.o)
 EXEC = game
 

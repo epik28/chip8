@@ -1,6 +1,7 @@
 #include <SDL2/SDL.h>
-#include "sql/sqlite3.h"
-#include "src/chip8.h"
+#include "sqlite3.h"
+#include "chip8.h"
+#include "db.h"
 #undef main
 
 #define SAMPLE_RATE 44100
@@ -133,49 +134,96 @@ void draw_screen(CHIP8 *chip) {
 }
 
 int main(int argc, char *argv[]) {
-    if (!init_SDL()) return 1;
-    
-    CHIP8 chip;
-    initialize(&chip);
-     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {  // AUDIO
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <game_id> or %s <rom_file>\n", argv[0], argv[0]);
+        return 1;
+    }
+
+    // Инициализация SDL 
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
         printf("SDL init error: %s\n", SDL_GetError());
         return 1;
     }
-    if (!load_rom(&chip,argv[1])) {
-        printf("Trying to load test rom...\n");
-        if (!load_rom(&chip, "test.ch8")) {
-            SDL_Quit();
-            return 1;
-        }
+
+    // Создание окна и рендерера 
+    window = SDL_CreateWindow("CHIP-8 Emulator",
+                              SDL_WINDOWPOS_CENTERED,
+                              SDL_WINDOWPOS_CENTERED,
+                              SCREEN_WIDTH * SCALE,
+                              SCREEN_HEIGHT * SCALE,
+                              SDL_WINDOW_SHOWN);
+    if (!window) {
+        printf("SDL window error: %s\n", SDL_GetError());
+        return 1;
     }
-    
-    srand(time(NULL));
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    if (!renderer) {
+        printf("SDL renderer error: %s\n", SDL_GetError());
+        return 1;
+    }
+
+    // Инициализация эмулятора
+    CHIP8 chip;
+    initialize(&chip);
+
+    // Инициализация базы данных
+    sqlite3 *db = init_db("chip8_games.db");
+    if (!db) {
+        fprintf(stderr, "Failed to open database. Continuing without DB...\n");
+        // Можно продолжить без базы, используя прямой путь
+    } else {
+        populate_default_games(db); // заполняем тестовыми играми при первом запуске
+    }
+
+    // Загрузка ROM
+    int loaded = 0;
+    char *endptr;
+    long id = strtol(argv[1], &endptr, 10);
+
+    if (*endptr == '\0' && db) { // аргумент — число, и БД открыта
+        char *path = get_rom_path(db, (int)id);
+        if (path) {
+            loaded = load_rom(&chip, path);
+            free(path);
+        } else {
+            printf("Game with ID %ld not found in database.\n", id);
+        }
+    } else { // аргумент — путь к файлу
+        loaded = load_rom(&chip, argv[1]);
+    }
+
+    close_db(db); // база больше не нужна
+
+    if (!loaded) {
+        printf("Failed to load ROM.\n");
+        SDL_Quit();
+        return 1;
+    }
+
+    // Инициализация звука
     init_audio(&chip);
-    
+
+    srand(time(NULL));
+
     // Основной цикл эмуляции
-    int running = 1;
-    while (running) {
+    while (1) {
         handle_input(&chip);
-        
-        // Выполняем несколько инструкций за кадр для скорости
         for (int i = 0; i < 10; i++) {
             uint16_t opcode = fetch_opcode(&chip);
             execute(&chip, opcode);
         }
-        
         update_timers(&chip);
-        
         if (chip.draw_flag) {
             draw_screen(&chip);
-        }   
-        
-        SDL_Delay(32); // ~60 FPS
+        }
+        SDL_Delay(32);
     }
-    if (audio_dev != 0)
-        SDL_CloseAudioDevice(audio_dev);
+
+    // Завершение
+    if (audio_dev != 0) SDL_CloseAudioDevice(audio_dev);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
-    
+
     return 0;
 }

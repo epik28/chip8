@@ -1,17 +1,20 @@
 CC = gcc
-CFLAGS = -Wall `sdl2-config --cflags -O3 -march=native -flto`
-LDFLAGS = `sdl2-config --libs `
+CFLAGS = -Wall -O3 -march=native -flto `sdl2-config --cflags`
+LDFLAGS = `sdl2-config --libs` -lsqlite3 -lm
 
-SRCS = game.c 
-EXTERNAL_SRC = sql/sqlite.c
+SRCS = game.c chip8.c db.c fontset.c
 OBJS = $(SRCS:.c=.o)
 EXEC = game
 
+all: $(EXEC)
+
 $(EXEC): $(OBJS)
-	$(CC) -o $(EXEC) $(OBJS) $(LDFLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS)
 
 %.o: %.c
-	$(CC) -c $(CFLAGS) $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	rm -f $(OBJS) $(EXEC)
+
+.PHONY: all clean

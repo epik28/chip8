@@ -1,12 +1,13 @@
-
+#include "chip8.h"
+#include "fontset.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <time.h>
 
 #define SCREEN_WIDTH 64
 #define SCREEN_HEIGHT 32
-#define SCREEN_WORDS (SCREEN_HEIGHT * SCREEN_WIDTH /64 )
 #define MEMORY_SIZE 4096
 #define STACK_SIZE 16
 #define REGISTERS_COUNT 16
@@ -25,27 +26,8 @@ typedef struct CHIP8 {
     uint8_t keys[KEY_COUNT];       // Состояние клавиш 16
     uint8_t draw_flag;             // Флаг обновления экрана 1
 } CHIP8;
-// Шрифты CHIP-8 (0x0-0xF)
-const uint8_t fontset[80] = { 
-    0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
-    0x20, 0x60, 0x20, 0x20, 0x70, // 1
-    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
-    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
-    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
-    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
-    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
-    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
-    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
-    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
-    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
-    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
-    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
-    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
-    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
-    0xF0, 0x80, 0xF0, 0x80, 0x80  // F
-};
 
-static inline void initialize(CHIP8 *chip) {
+ void initialize(CHIP8 *chip) {
     memset(chip, 0, sizeof(CHIP8));
     
     // Загрузка шрифтов в память
@@ -55,7 +37,7 @@ static inline void initialize(CHIP8 *chip) {
     chip->draw_flag = 1;
 }
 
-static inline int load_rom(CHIP8 *chip, const char *filename) {
+ int load_rom(CHIP8 *chip, const char *filename) {
     FILE *file = fopen(filename, "rb");
     if (!file) {
         printf("Error: Cannot open file %s\n", filename);
@@ -86,16 +68,16 @@ static inline int load_rom(CHIP8 *chip, const char *filename) {
     return 1;
 }
 
-static inline uint16_t fetch_opcode(CHIP8 *chip) {
+ uint16_t fetch_opcode(CHIP8 *chip) {
     return (chip->memory[chip->PC] << 8) | chip->memory[chip->PC + 1];
 }
 
-static inline void clear_screen(CHIP8 *chip) {
+void clear_screen(CHIP8 *chip) {
     memset(chip->display, 0, sizeof(chip->display));
     chip->draw_flag = 1;
 }
 
-static inline void execute(CHIP8 *chip, uint16_t opcode) {
+ void execute(CHIP8 *chip, uint16_t opcode) {
     uint8_t x = (opcode >> 8) & 0x0F;
     uint8_t y = (opcode >> 4) & 0x0F;
     uint8_t n = opcode & 0x0F;
